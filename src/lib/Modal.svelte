@@ -30,7 +30,7 @@
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" onclick={onBackdropClick} role="dialog" aria-modal="true" aria-label={title}>
+  <div class="modal-overlay" onclick={onBackdropClick} role="dialog" aria-modal="true" aria-label={title} tabindex="-1">
     <div class="modal-content">
       <div class="modal-header">
         <h2 class="modal-title">{title}</h2>
@@ -119,70 +119,61 @@
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Machine Detail */
-  .machine-detail {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .detail-divider {
-    height: 1px;
-    background: hsl(var(--border));
-    margin: 10px 0 12px;
-  }
-
-  .detail-row {
-    display: flex;
-    align-items: flex-start;
-    padding: 5px 0;
-  }
-
-  .detail-label {
-    font-size: 12px;
-    color: hsl(var(--muted-foreground));
-    flex-shrink: 0;
-  }
-
-  .detail-value {
-    font-size: 12px;
-    color: hsl(var(--foreground));
-    font-weight: 500;
-    flex: 1;
-    font-feature-settings: "tnum" 1;
-  }
-
-  .detail-value-addr {
-    font-weight: 400;
-    color: hsl(var(--muted-foreground));
-    word-break: break-word;
-  }
-
-  .detail-status-active {
-    color: hsl(142 71% 40%);
-    font-weight: 500;
-  }
-
-  .detail-status-offline {
-    color: hsl(var(--muted-foreground));
-    font-weight: 400;
-  }
-
-  :global(.dark) .detail-status-active {
-    color: hsl(142 71% 60%);
-  }
-
-  /* Date Changes (inside modal) */
-  .detail-section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: hsl(var(--muted-foreground));
-    margin-bottom: 8px;
-    padding: 0 0 4px;
-    border-bottom: 1px solid hsl(var(--border));
-  }
-
-  .detail-section-title + .detail-section-title {
-    margin-top: 16px;
+  /* Snippet-rendered content (global — rendered by App.svelte) */
+  :global {
+    .machine-detail {
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-divider {
+      height: 1px;
+      background: hsl(var(--border));
+      margin: 10px 0 12px;
+    }
+    .detail-row {
+      display: flex;
+      align-items: flex-start;
+      padding: 5px 0;
+    }
+    .detail-label {
+      font-size: 12px;
+      color: hsl(var(--muted-foreground));
+      flex-shrink: 0;
+    }
+    .detail-value {
+      font-size: 12px;
+      color: hsl(var(--foreground));
+      font-weight: 500;
+      flex: 1;
+      font-feature-settings: "tnum" 1;
+    }
+    .detail-value-addr {
+      font-weight: 400;
+      color: hsl(var(--muted-foreground));
+      word-break: break-word;
+    }
+    .detail-status-active {
+      color: hsl(142 71% 40%);
+      font-weight: 500;
+    }
+    .detail-status-offline {
+      color: hsl(var(--muted-foreground));
+      font-weight: 400;
+    }
+    .dark .detail-status-active {
+      color: hsl(142 71% 60%);
+    }
+    .detail-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 8px;
+      padding: 0 0 4px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .detail-section-title + .detail-section-title {
+      margin-top: 16px;
+    }
   }
 
   .modal-body :global(.component-item) {

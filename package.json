@@ -4,19 +4,23 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:server": "bun run server/index.ts",
-    "dev:all": "concurrently -n srv,web -c yellow,cyan \"bun run dev:server\" \"bun run dev\"",
+    "dev": "vite dev",
     "build": "vite build",
-    "preview": "vite preview",
+    "start": "node build/index.js",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "svelte": "^5.5.5"
+  },
   "devDependencies": {
+    "@sveltejs/adapter-node": "^5.5.4",
+    "@sveltejs/kit": "^2.66.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.12.3",
     "concurrently": "^10.0.3",
-    "svelte": "^5.55.5",
     "svelte-check": "^4.4.8",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"

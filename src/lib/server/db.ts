@@ -1,19 +1,21 @@
-import { Database } from "bun:sqlite";
-import { mkdirSync } from "fs";
+import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
 import type { Location, LocationRecord, SnapshotRecord, ProvinceInfo } from "./types";
 
-const DB_PATH = import.meta.dirname + "/../data/maimai.db";
+type DB = ReturnType<typeof Database>;
 
-let db: Database;
+const DB_PATH = "data/maimai.db";
 
-export function initDB(): Database {
-  mkdirSync(import.meta.dirname + "/../data", { recursive: true });
+let db: DB;
 
-  db = new Database(DB_PATH, { create: true });
-  db.run("PRAGMA journal_mode = WAL");
-  db.run("PRAGMA busy_timeout = 5000");
+export function initDB(): DB {
+  mkdirSync("data", { recursive: true });
 
-  db.run(`
+  db = new Database(DB_PATH);
+  db.pragma("journal_mode = WAL");
+  db.pragma("busy_timeout = 5000");
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS locations (
       id TEXT PRIMARY KEY,
       province TEXT NOT NULL,
@@ -26,7 +28,7 @@ export function initDB(): Database {
     )
   `);
 
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fetched_at TEXT NOT NULL,
@@ -41,7 +43,7 @@ export function initDB(): Database {
   return db;
 }
 
-export function getDB(): Database {
+export function getDB(): DB {
   if (!db) return initDB();
   return db;
 }
@@ -49,7 +51,7 @@ export function getDB(): Database {
 /** 检查是否尚未有任何数据（首次初始化） */
 export function isEmpty(): boolean {
   const db = getDB();
-  const row = db.query("SELECT COUNT(*) as count FROM locations").get() as { count: number };
+  const row = db.prepare("SELECT COUNT(*) as count FROM locations").get() as { count: number };
   return row.count === 0;
 }
 
@@ -61,7 +63,7 @@ export function updateLocations(
   const now = new Date().toISOString();
 
   const activeRows = db
-    .query("SELECT id FROM locations WHERE is_active = 1")
+    .prepare("SELECT id FROM locations WHERE is_active = 1")
     .all() as { id: string }[];
 
   const activeIds = new Set(activeRows.map((r) => r.id));
@@ -89,7 +91,7 @@ export function updateLocations(
 
   for (const loc of data) {
     const existing = db
-      .query("SELECT first_seen_at FROM locations WHERE id = ?")
+      .prepare("SELECT first_seen_at FROM locations WHERE id = ?")
       .get(loc.id) as { first_seen_at: string } | null;
 
     const firstSeen = existing ? existing.first_seen_at : now;
@@ -119,10 +121,11 @@ export function recordSnapshot(
   const gansuData = allData.filter((d) => d.province === "甘肃");
   const details = JSON.stringify(gansuData);
 
-  db.run(
+  db.prepare(
     `INSERT INTO snapshots (fetched_at, total_count, gansu_count, added_count, removed_count, details)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [new Date().toISOString(), allData.length, gansuData.length, addedCount, removedCount, details],
+  ).run(
+    new Date().toISOString(), allData.length, gansuData.length, addedCount, removedCount, details,
   );
 }
 
@@ -132,7 +135,7 @@ export function recordSnapshot(
 export function getAllProvinces(): ProvinceInfo[] {
   const db = getDB();
   return db
-    .query(
+    .prepare(
       "SELECT province, COUNT(*) as count FROM locations WHERE is_active = 1 GROUP BY province ORDER BY count DESC",
     )
     .all() as ProvinceInfo[];
@@ -143,11 +146,11 @@ export function getActiveLocationsByProvince(province: string): LocationRecord[]
   const db = getDB();
   if (province === "全国") {
     return db
-      .query("SELECT * FROM locations WHERE is_active = 1 ORDER BY province, arcade_name")
+      .prepare("SELECT * FROM locations WHERE is_active = 1 ORDER BY province, arcade_name")
       .all() as LocationRecord[];
   }
   return db
-    .query("SELECT * FROM locations WHERE is_active = 1 AND province = ? ORDER BY arcade_name")
+    .prepare("SELECT * FROM locations WHERE is_active = 1 AND province = ? ORDER BY arcade_name")
     .all(province) as LocationRecord[];
 }
 
@@ -162,13 +165,13 @@ export function getTodayChangesByProvince(province: string): { added: number; re
   const params = province === "全国" ? [] : [province];
 
   const addedRow = db
-    .query(
+    .prepare(
       `SELECT COUNT(*) as count FROM locations WHERE is_active = 1 AND first_seen_at >= ? AND ${provinceFilter}`,
     )
     .get(todayISO, ...params) as { count: number };
 
   const removedRow = db
-    .query(
+    .prepare(
       `SELECT COUNT(*) as count FROM locations WHERE is_active = 0 AND last_seen_at >= ? AND ${provinceFilter}`,
     )
     .get(todayISO, ...params) as { count: number };
@@ -186,7 +189,7 @@ export function getTodayNewLocations(): LocationRecord[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return db
-    .query(
+    .prepare(
       "SELECT * FROM locations WHERE is_active = 1 AND first_seen_at >= ? ORDER BY first_seen_at DESC",
     )
     .all(today.toISOString()) as LocationRecord[];
@@ -198,7 +201,7 @@ export function getTodayChanges(): { added: number; removed: number } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const rows = db
-    .query(
+    .prepare(
       `SELECT COALESCE(SUM(added_count), 0) as added, COALESCE(SUM(removed_count), 0) as removed
        FROM snapshots WHERE fetched_at >= ?`,
     )
@@ -219,13 +222,13 @@ export function getTodayChangedMachines(province: string): {
   const params = province === "全国" ? [] : [province];
 
   const added = db
-    .query(
+    .prepare(
       `SELECT province, arcade_name FROM locations WHERE is_active = 1 AND first_seen_at >= ? AND ${provFilter} ORDER BY first_seen_at DESC LIMIT 20`,
     )
     .all(todayISO, ...params) as { province: string; arcade_name: string }[];
 
   const removed = db
-    .query(
+    .prepare(
       `SELECT province, arcade_name FROM locations WHERE is_active = 0 AND last_seen_at >= ? AND ${provFilter} ORDER BY last_seen_at DESC LIMIT 20`,
     )
     .all(todayISO, ...params) as { province: string; arcade_name: string }[];
@@ -236,20 +239,20 @@ export function getTodayChangedMachines(province: string): {
 export function getLatestSnapshot(): SnapshotRecord | null {
   const db = getDB();
   return db
-    .query("SELECT * FROM snapshots ORDER BY fetched_at DESC LIMIT 1")
+    .prepare("SELECT * FROM snapshots ORDER BY fetched_at DESC LIMIT 1")
     .get() as SnapshotRecord | null;
 }
 
 export function getTotalLocationCount(): number {
   const db = getDB();
-  const row = db.query("SELECT COUNT(*) as count FROM locations WHERE is_active = 1").get() as any;
+  const row = db.prepare("SELECT COUNT(*) as count FROM locations WHERE is_active = 1").get() as any;
   return row?.count ?? 0;
 }
 
 export function getSnapshots(limit = 30): SnapshotRecord[] {
   const db = getDB();
   return db
-    .query("SELECT * FROM snapshots ORDER BY fetched_at DESC LIMIT ?")
+    .prepare("SELECT * FROM snapshots ORDER BY fetched_at DESC LIMIT ?")
     .all(limit) as SnapshotRecord[];
 }
 
@@ -269,7 +272,7 @@ export function getCalendarByProvince(
 
   // UNION: additions by first_seen_at + removals by last_seen_at (inactive only)
   const rows = db
-    .query(
+    .prepare(
       `SELECT d, COALESCE(SUM(a), 0) as added, COALESCE(SUM(r), 0) as removed FROM (
          SELECT DATE(first_seen_at) as d, 1 as a, 0 as r
          FROM locations
@@ -304,18 +307,18 @@ export function getChangedMachinesByDate(
 
   // Check if this is the first day with data (init day)
   const earliest = db
-    .query("SELECT DATE(MIN(first_seen_at)) as d FROM locations")
+    .prepare("SELECT DATE(MIN(first_seen_at)) as d FROM locations")
     .get() as { d: string } | null;
   const isInit = earliest?.d === dateStr;
 
   const added = db
-    .query(
+    .prepare(
       `SELECT * FROM locations WHERE DATE(first_seen_at) = ? AND ${provFilter} ORDER BY arcade_name LIMIT 200`,
     )
     .all(dateStr, ...(province === "全国" ? [] : [province])) as LocationRecord[];
 
   const removed = db
-    .query(
+    .prepare(
       `SELECT * FROM locations WHERE is_active = 0 AND DATE(last_seen_at) = ? AND ${provFilter} ORDER BY arcade_name LIMIT 200`,
     )
     .all(dateStr, ...(province === "全国" ? [] : [province])) as LocationRecord[];

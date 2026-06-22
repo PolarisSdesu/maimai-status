@@ -1,97 +1,74 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import type {
-    StatusData,
-    ProvinceInfo,
-    CalendarDay,
-    Machine,
-    ChangesByDateResponse,
-  } from "./lib/types";
-  import { formatTime, relativeTime } from "./lib/utils";
-  import Header from "./lib/Header.svelte";
-  import StatusCard from "./lib/StatusCard.svelte";
-  import StatsGrid from "./lib/StatsGrid.svelte";
-  import HistoryCalendar from "./lib/HistoryCalendar.svelte";
-  import MachineList from "./lib/MachineList.svelte";
-  import TodayChanges from "./lib/TodayChanges.svelte";
-  import Footer from "./lib/Footer.svelte";
-  import LoadingSkeleton from "./lib/LoadingSkeleton.svelte";
-  import Modal from "./lib/Modal.svelte";
+  import { browser } from '$app/environment';
+  import type { StatusData, ProvinceInfo, CalendarDay, Machine, ChangesByDateResponse } from '$lib/types';
+  import { formatTime, relativeTime } from '$lib/utils';
+  import Header from '$lib/Header.svelte';
+  import StatusCard from '$lib/StatusCard.svelte';
+  import StatsGrid from '$lib/StatsGrid.svelte';
+  import HistoryCalendar from '$lib/HistoryCalendar.svelte';
+  import MachineList from '$lib/MachineList.svelte';
+  import TodayChanges from '$lib/TodayChanges.svelte';
+  import Footer from '$lib/Footer.svelte';
+  import LoadingSkeleton from '$lib/LoadingSkeleton.svelte';
+  import Modal from '$lib/Modal.svelte';
 
-  interface Props {
-    initialData?: StatusData & {
-      provinces: ProvinceInfo[];
-      calYear: number;
-      calMonth: number;
-      calDays: CalendarDay[];
-    };
-  }
+  let { data } = $props();
 
-  let { initialData = undefined }: Props = $props();
-
-  let status = $state<"loading" | "loaded" | "error">(initialData ? "loaded" : "loading");
-  let data = $state<StatusData | null>(initialData ?? null);
-  let errorMsg = $state("");
+  let status = $state<'loading' | 'loaded' | 'error'>('loaded');
+  let statusData = $state<StatusData | null>(data);
+  let errorMsg = $state('');
   let darkMode = $state(false);
-  let themeMounted = $state(!!initialData);
+  let themeMounted = $state(false);
 
   // Province
-  let selectedProvince = $state(initialData?.province ?? "全国");
-  let provinces = $state<ProvinceInfo[]>(initialData?.provinces ?? []);
+  let selectedProvince = $state(data.province);
+  let provinces = $state<ProvinceInfo[]>(data.provinces);
 
   // Calendar
-  let calYear = $state(initialData?.calYear ?? new Date().getFullYear());
-  let calMonth = $state(initialData?.calMonth ?? new Date().getMonth() + 1);
-  let calDays = $state<CalendarDay[]>(initialData?.calDays ?? []);
+  let calYear = $state(data.calYear);
+  let calMonth = $state(data.calMonth);
+  let calDays = $state<CalendarDay[]>(data.calDays);
   let calLoading = $state(false);
 
   // Modal
   let modalOpen = $state(false);
-  let modalTitle = $state("");
+  let modalTitle = $state('');
   let selectedMachine = $state<Machine | null>(null);
   let selectedDateChanges = $state<ChangesByDateResponse | null>(null);
 
-  onMount(() => {
-    const saved = localStorage.getItem("theme");
+  $effect(() => {
+    if (!browser) return;
+    const saved = localStorage.getItem('theme');
     if (
-      saved === "dark" ||
-      (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      saved === 'dark' ||
+      (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
     ) {
       darkMode = true;
     }
     applyTheme(darkMode);
     themeMounted = true;
-
-    if (!initialData) {
-      fetchProvinces();
-      fetchStatus();
-      fetchCalendar();
-    }
-    const ONE_HOUR = 60 * 60 * 1000;
-    const timer = setInterval(fetchStatus, ONE_HOUR);
-    return () => clearInterval(timer);
   });
 
   $effect(() => {
     if (themeMounted) {
-      document.title = "全国舞萌机台数据库";
+      document.title = '全国舞萌机台数据库';
     }
   });
 
   function toggleTheme() {
     darkMode = !darkMode;
     applyTheme(darkMode);
-    localStorage.setItem("theme", darkMode ? "dark" : "light");
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }
 
   function applyTheme(dark: boolean) {
-    document.documentElement.classList.toggle("dark", dark);
-    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
   }
 
   async function fetchProvinces() {
     try {
-      const resp = await fetch("/api/provinces");
+      const resp = await fetch('/api/provinces');
       if (resp.ok) provinces = (await resp.json()).provinces;
     } catch {
       /* ignore */
@@ -104,11 +81,11 @@
         `/api/status?province=${encodeURIComponent(selectedProvince)}`,
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      data = (await resp.json()) as StatusData;
-      status = "loaded";
+      statusData = (await resp.json()) as StatusData;
+      status = 'loaded';
     } catch (err) {
-      status = "error";
-      errorMsg = err instanceof Error ? err.message : "网络请求失败";
+      status = 'error';
+      errorMsg = err instanceof Error ? err.message : '网络请求失败';
     }
   }
 
@@ -129,7 +106,7 @@
     const sel = e.target as HTMLSelectElement;
     selectedProvince = sel.value;
     sel.blur();
-    status = "loading";
+    status = 'loading';
     fetchStatus();
     fetchCalendar();
   }
@@ -193,7 +170,7 @@
 <Header
   {selectedProvince}
   {provinces}
-  totalCount={data?.totalCount}
+  totalCount={statusData?.totalCount}
   {darkMode}
   {onProvinceChange}
   onToggleTheme={toggleTheme}
@@ -201,15 +178,15 @@
 
 {#if !themeMounted}
   <div style="min-height:60vh"></div>
-{:else if status === "loading"}
+{:else if status === 'loading'}
   <StatusCard status="loading" data={null} errorMsg="" onRetry={fetchStatus} />
   <LoadingSkeleton />
-{:else if status === "error"}
-  <StatusCard {status} {data} {errorMsg} onRetry={fetchStatus} />
+{:else if status === 'error'}
+  <StatusCard {status} data={statusData} {errorMsg} onRetry={fetchStatus} />
 {:else}
-  {@const d = data!}
+  {@const d = statusData!}
 
-  <StatusCard {status} {data} {errorMsg} onRetry={fetchStatus} />
+  <StatusCard {status} data={statusData} {errorMsg} onRetry={fetchStatus} />
 
   <StatsGrid
     provinceCount={d.provinceCount}
@@ -232,7 +209,7 @@
   <MachineList
     machines={d.machines}
     province={d.province}
-    showProvince={d.province === "全国"}
+    showProvince={d.province === '全国'}
     onMachineClick={openMachineDetail}
   />
 
@@ -241,7 +218,7 @@
     recentChanges={d.recentChanges}
     onClick={() => {
       const today = new Date();
-      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       openDateChanges(dateStr);
     }}
   />
@@ -277,14 +254,14 @@
       <div class="detail-row">
         <span class="detail-label">首次发现：</span><span class="detail-value"
           >{new Date(selectedMachine.first_seen_at).toLocaleString(
-            "zh-CN",
+            'zh-CN',
           )}</span
         >
       </div>
       <div class="detail-row">
         <span class="detail-label">最后更新：</span><span class="detail-value"
           >{new Date(selectedMachine.last_seen_at).toLocaleString(
-            "zh-CN",
+            'zh-CN',
           )}</span
         >
       </div>
@@ -304,14 +281,14 @@
             role="button"
             tabindex="0"
             onkeydown={(e: KeyboardEvent) => {
-              if (e.key === "Enter") openMachineDetail(m);
+              if (e.key === 'Enter') openMachineDetail(m);
             }}
           >
             <div class="dot new"></div>
             <div class="component-info">
               <div class="component-name">{m.arcade_name}</div>
               <div class="component-meta">
-                {selectedProvince === "全国"
+                {selectedProvince === '全国'
                   ? `${m.province} · ${m.address}`
                   : m.address}
               </div>
@@ -330,14 +307,14 @@
             role="button"
             tabindex="0"
             onkeydown={(e: KeyboardEvent) => {
-              if (e.key === "Enter") openMachineDetail(m);
+              if (e.key === 'Enter') openMachineDetail(m);
             }}
           >
             <div class="dot offline"></div>
             <div class="component-info">
               <div class="component-name">{m.arcade_name}</div>
               <div class="component-meta">
-                {selectedProvince === "全国"
+                {selectedProvince === '全国'
                   ? `${m.province} · ${m.address}`
                   : m.address}
               </div>
