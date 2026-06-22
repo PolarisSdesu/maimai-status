@@ -15,20 +15,23 @@
 
   let { data } = $props();
 
+  // Snapshot initial prop values to avoid reactive capture of one-time SSR data
+  const init = $state.snapshot(data);
+
   let status = $state<'loading' | 'loaded' | 'error'>('loaded');
-  let statusData = $state<StatusData | null>(data);
+  let statusData = $state<StatusData | null>(init);
   let errorMsg = $state('');
   let darkMode = $state(false);
   let themeMounted = $state(false);
 
   // Province
-  let selectedProvince = $state(data.province);
-  let provinces = $state<ProvinceInfo[]>(data.provinces);
+  let selectedProvince = $state(init.province);
+  let provinces = $state<ProvinceInfo[]>(init.provinces);
 
   // Calendar
-  let calYear = $state(data.calYear);
-  let calMonth = $state(data.calMonth);
-  let calDays = $state<CalendarDay[]>(data.calDays);
+  let calYear = $state(init.calYear);
+  let calMonth = $state(init.calMonth);
+  let calDays = $state<CalendarDay[]>(init.calDays);
   let calLoading = $state(false);
 
   // Search overlay
@@ -243,7 +246,7 @@
           >{selectedMachine.province}</span
         >
       </div>
-      <div class="detail-row">
+      <div class="detail-row detail-row-top">
         <span class="detail-label">地址：</span><span
           class="detail-value detail-value-addr">{selectedMachine.address}</span
         >

@@ -17,6 +17,7 @@
   import Footer from "./lib/Footer.svelte";
   import LoadingSkeleton from "./lib/LoadingSkeleton.svelte";
   import Modal from "./lib/Modal.svelte";
+  import SearchOverlay from "./lib/SearchOverlay.svelte";
 
   interface Props {
     initialData?: StatusData & {
@@ -29,21 +30,27 @@
 
   let { initialData = undefined }: Props = $props();
 
-  let status = $state<"loading" | "loaded" | "error">(initialData ? "loaded" : "loading");
-  let data = $state<StatusData | null>(initialData ?? null);
+  // Snapshot initial prop values to avoid reactive capture of one-time SSR data
+  const init = $state.snapshot(initialData);
+
+  let status = $state<"loading" | "loaded" | "error">(init ? "loaded" : "loading");
+  let data = $state<StatusData | null>(init ?? null);
   let errorMsg = $state("");
   let darkMode = $state(false);
-  let themeMounted = $state(!!initialData);
+  let themeMounted = $state(!!init);
 
   // Province
-  let selectedProvince = $state(initialData?.province ?? "全国");
-  let provinces = $state<ProvinceInfo[]>(initialData?.provinces ?? []);
+  let selectedProvince = $state(init?.province ?? "全国");
+  let provinces = $state<ProvinceInfo[]>(init?.provinces ?? []);
 
   // Calendar
-  let calYear = $state(initialData?.calYear ?? new Date().getFullYear());
-  let calMonth = $state(initialData?.calMonth ?? new Date().getMonth() + 1);
-  let calDays = $state<CalendarDay[]>(initialData?.calDays ?? []);
+  let calYear = $state(init?.calYear ?? new Date().getFullYear());
+  let calMonth = $state(init?.calMonth ?? new Date().getMonth() + 1);
+  let calDays = $state<CalendarDay[]>(init?.calDays ?? []);
   let calLoading = $state(false);
+
+  // Search overlay
+  let searchOpen = $state(false);
 
   // Modal
   let modalOpen = $state(false);
@@ -197,6 +204,7 @@
   {darkMode}
   {onProvinceChange}
   onToggleTheme={toggleTheme}
+  onSearchClick={() => { searchOpen = true; }}
 />
 
 {#if !themeMounted}
@@ -261,7 +269,7 @@
           >{selectedMachine.province}</span
         >
       </div>
-      <div class="detail-row">
+      <div class="detail-row detail-row-top">
         <span class="detail-label">地址：</span><span
           class="detail-value detail-value-addr">{selectedMachine.address}</span
         >
@@ -348,3 +356,9 @@
     {/if}
   {/if}
 </Modal>
+
+<SearchOverlay
+  open={searchOpen}
+  onclose={() => { searchOpen = false; }}
+  onMachineClick={openMachineDetail}
+/>

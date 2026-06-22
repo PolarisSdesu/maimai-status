@@ -132,13 +132,17 @@
     }
     .detail-row {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       padding: 5px 0;
+    }
+    .detail-row-top {
+      align-items: flex-start;
     }
     .detail-label {
       font-size: 12px;
       color: hsl(var(--muted-foreground));
       flex-shrink: 0;
+      width: 72px;
     }
     .detail-value {
       font-size: 12px;
@@ -146,11 +150,13 @@
       font-weight: 500;
       flex: 1;
       font-feature-settings: "tnum" 1;
+      white-space: nowrap;
     }
     .detail-value-addr {
       font-weight: 400;
       color: hsl(var(--muted-foreground));
       word-break: break-word;
+      white-space: normal;
     }
     .detail-status-active {
       color: hsl(142 71% 40%);

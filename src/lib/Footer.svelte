@@ -13,21 +13,22 @@
 </script>
 
 <div class="footer">
-  <span>上次同步：{formattedTime}（{relativeTimeStr}）</span>
-  <span class="footer-sep">&middot;</span>
-  <span>每小时自动更新</span>
+  <div>全国舞萌机台数据库</div>
+  <span>上次同步：{formattedTime} ({relativeTimeStr})</span><span
+    class="footer-sep">・</span
+  ><span>每小时自动更新</span>
   <div class="powered">Data by SEGA 官方机台注册 API</div>
   <div class="social-links">
     <a href="https://x.com/iamgbxin" target="_blank" rel="noopener noreferrer"
       >X (旧 Twitter)</a
     >
-    <span class="social-sep">｜</span>
+    <span class="social-sep">|</span>
     <a
       href="https://space.bilibili.com/294080110/lists"
       target="_blank"
       rel="noopener noreferrer">bilibili</a
     >
-    <span class="social-sep">｜</span>
+    <span class="social-sep">|</span>
     <a
       href="https://github.com/PolarisSdesu/maimai-status"
       target="_blank"

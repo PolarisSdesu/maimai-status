@@ -63,7 +63,7 @@
             title={hasChanges ? `${cell.dateStr}\n新增 ${cell.added} 台\n移除 ${cell.removed} 台` : ''}
             onclick={() => { if (hasChanges) onDateClick?.(cell.dateStr); }}
             role={hasChanges ? 'button' : undefined}
-            tabindex={hasChanges ? 0 : undefined}
+            tabindex={hasChanges ? 0 : -1}
             onkeydown={(e: KeyboardEvent) => { if (hasChanges && e.key === 'Enter') onDateClick?.(cell.dateStr); }}
           >
             <div class="cal-day" class:cal-day-today={cell.isToday} class:cal-day-added={hasAdded && !hasRemoved} class:cal-day-removed={hasRemoved && !hasAdded} class:cal-day-has-changes={hasAdded && hasRemoved}>
