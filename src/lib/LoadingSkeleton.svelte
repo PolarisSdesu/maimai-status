@@ -136,6 +136,7 @@
     padding: 0.75rem 1rem 1rem;
   }
   .status-card-body .status-heading {
+    height: 20px;
     font-weight: 500;
     font-size: 0.875rem;
     display: flex;
@@ -144,6 +145,7 @@
     color: hsl(var(--card-foreground));
   }
   .status-card-body .status-subtitle {
+    height: 20px;
     font-size: 0.875rem;
     color: hsl(var(--muted-foreground));
     margin-top: 0.25rem;
@@ -175,6 +177,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     padding: 0 0.5rem;
+    align-content: start;
   }
   .cal-cell {
     display: flex;

@@ -45,14 +45,20 @@
     </div>
   </div>
   <div class="cal-body">
+    <div class="cal-weekdays">
+      {#each WEEKDAYS as w}
+        <div class="cal-weekday">{w}</div>
+      {/each}
+    </div>
     {#if calLoading}
-      <div class="cal-loading">加载中…</div>
-    {:else}
-      <div class="cal-weekdays">
-        {#each WEEKDAYS as w}
-          <div class="cal-weekday">{w}</div>
+      <div class="cal-grid">
+        {#each Array(30) as _}
+          <div class="cal-cell">
+            <div class="skel" style="width:min(28px,100%);aspect-ratio:1;border-radius:50%"></div>
+          </div>
         {/each}
       </div>
+    {:else}
       <div class="cal-grid">
         {#each getCalendarGrid(calYear, calMonth, calDays) as cell}
           {@const hasAdded = cell.added > 0 && cell.isCurrentMonth}
@@ -139,6 +145,8 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     padding: 0 0.5rem;
+    min-height: 210px;
+    align-content: start;
   }
 
   .cal-cell {

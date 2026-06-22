@@ -66,6 +66,8 @@
   height: 91.5px;
   min-height: 0;
   padding: 1rem 1rem;
+  display: flex;
+  align-items: center;
 }
 
 /* ── Badges ── */
@@ -207,6 +209,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0;
+  width: 100%;
 }
 
 .overview-grid-2col {
