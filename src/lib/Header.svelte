@@ -9,6 +9,7 @@
     darkMode: boolean;
     onProvinceChange: (e: Event) => void;
     onToggleTheme: () => void;
+    onSearchClick: () => void;
   }
 
   let {
@@ -18,6 +19,7 @@
     darkMode,
     onProvinceChange,
     onToggleTheme,
+    onSearchClick,
   }: Props = $props();
 </script>
 
@@ -26,6 +28,27 @@
     <img class="logo-icon" src={logo} alt="Maimai_DX_LOGO" />
   </a>
   <div class="header-actions">
+    <button
+      class="search-btn"
+      onclick={onSearchClick}
+      aria-label="搜索全国机台"
+      title="搜索全国机台"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+    </button>
     <select
       class="province-select"
       value={selectedProvince}
@@ -142,6 +165,28 @@
   .province-select:focus-visible {
     border-color: hsl(var(--ring));
     box-shadow: 0 0 0 1px hsl(var(--ring) / 0.3);
+  }
+
+  .search-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border));
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+  .search-btn:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
   }
 
   .theme-toggle {

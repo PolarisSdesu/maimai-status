@@ -51,7 +51,7 @@
   .modal-overlay {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 70;
     background: hsl(var(--foreground) / 0.3);
     backdrop-filter: blur(2px);
     display: flex;

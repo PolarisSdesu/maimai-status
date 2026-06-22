@@ -293,6 +293,17 @@ export function getCalendarByProvince(
   return rows.map((r) => ({ date: r.d, added: r.added, removed: r.removed }));
 }
 
+/** 搜索机台：按名称、地址、省份模糊匹配，全国范围 */
+export function searchLocations(query: string): LocationRecord[] {
+  const db = getDB();
+  const pattern = `%${query}%`;
+  return db
+    .prepare(
+      `SELECT * FROM locations WHERE is_active = 1 AND (arcade_name LIKE ? OR address LIKE ? OR province LIKE ?) ORDER BY province, arcade_name LIMIT 100`,
+    )
+    .all(pattern, pattern, pattern) as LocationRecord[];
+}
+
 /** 获取指定日期某省份的机台变更列表（含完整记录） */
 export function getChangedMachinesByDate(
   dateStr: string,

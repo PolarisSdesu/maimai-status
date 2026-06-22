@@ -11,6 +11,7 @@
   import Footer from '$lib/Footer.svelte';
   import LoadingSkeleton from '$lib/LoadingSkeleton.svelte';
   import Modal from '$lib/Modal.svelte';
+  import SearchOverlay from '$lib/SearchOverlay.svelte';
 
   let { data } = $props();
 
@@ -29,6 +30,9 @@
   let calMonth = $state(data.calMonth);
   let calDays = $state<CalendarDay[]>(data.calDays);
   let calLoading = $state(false);
+
+  // Search overlay
+  let searchOpen = $state(false);
 
   // Modal
   let modalOpen = $state(false);
@@ -174,6 +178,7 @@
   {darkMode}
   {onProvinceChange}
   onToggleTheme={toggleTheme}
+  onSearchClick={() => { searchOpen = true; }}
 />
 
 {#if !themeMounted}
@@ -325,3 +330,9 @@
     {/if}
   {/if}
 </Modal>
+
+<SearchOverlay
+  open={searchOpen}
+  onclose={() => { searchOpen = false; }}
+  onMachineClick={openMachineDetail}
+/>
