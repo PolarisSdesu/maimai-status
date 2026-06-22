@@ -63,6 +63,7 @@
 }
 
 .cal-body.cal-body-overview {
+  height: 91.5px;
   min-height: 0;
   padding: 1rem 1rem;
 }

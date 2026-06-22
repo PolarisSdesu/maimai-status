@@ -2,8 +2,7 @@
 </script>
 
 <!-- StatusCard 骨架 -->
-<div
-  class="status-card status-card-loading">
+<div class="status-card status-card-loading">
   <div class="status-card-body">
     <div class="status-heading">
       <div
@@ -133,6 +132,7 @@
     background: hsl(var(--muted));
   }
   .status-card-body {
+    height: 72px;
     padding: 0.75rem 1rem 1rem;
   }
   .status-card-body .status-heading {
@@ -171,6 +171,7 @@
     color: hsl(var(--muted-foreground));
   }
   .cal-grid {
+    height: 210px;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     padding: 0 0.5rem;
