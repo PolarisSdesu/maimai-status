@@ -3,9 +3,7 @@
 
 <!-- StatusCard 骨架 -->
 <div
-  class="status-card status-card-loading"
-  style="height:82px"
->
+  class="status-card status-card-loading">
   <div class="status-card-body">
     <div class="status-heading">
       <div
@@ -26,7 +24,7 @@
   <div class="cal-header">
     <div class="cal-title">机台概况</div>
   </div>
-  <div class="cal-body cal-body-overview" style="height:91.5px;display:flex;flex-direction:column;justify-content:center">
+  <div class="cal-body cal-body-overview">
     <div class="overview-grid overview-grid-2col">
       {#each [1, 2] as _}
         <div class="overview-item">
@@ -65,7 +63,7 @@
         <div class="cal-cell">
           <div
             class="skel"
-            style="width:30px;height:30px;border-radius:50%"
+            style="width:min(28px,100%);aspect-ratio:1;border-radius:50%"
           ></div>
         </div>
       {/each}
