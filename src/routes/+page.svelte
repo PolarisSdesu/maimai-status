@@ -330,6 +330,7 @@
   }
   .page-body > * {
     grid-area: main;
+    min-width: 0;
   }
 
   .skeleton-layer {
