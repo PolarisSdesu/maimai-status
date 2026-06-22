@@ -17,26 +17,23 @@
   <span class="footer-sep">&middot;</span>
   <span>每小时自动更新</span>
   <div class="powered">Data by SEGA 官方机台注册 API</div>
-  <a
-    class="x-link"
-    href="https://x.com/iamgbxin"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="X (Twitter) - iamgbxin"
-    title="X (Twitter) - iamgbxin"
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
+  <div class="social-links">
+    <a href="https://x.com/iamgbxin" target="_blank" rel="noopener noreferrer"
+      >X (旧 Twitter)</a
     >
-      <path
-        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
-      />
-    </svg>
-  </a>
+    <span class="social-sep">｜</span>
+    <a
+      href="https://space.bilibili.com/294080110/lists"
+      target="_blank"
+      rel="noopener noreferrer">bilibili</a
+    >
+    <span class="social-sep">｜</span>
+    <a
+      href="https://github.com/PolarisSdesu/maimai-status"
+      target="_blank"
+      rel="noopener noreferrer">GitHub</a
+    >
+  </div>
 </div>
 
 <style>
@@ -56,17 +53,20 @@
     font-size: 11px;
     opacity: 0.6;
   }
-  .x-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+  .social-links {
     margin-top: 8px;
+    font-size: 12px;
+  }
+  .social-links a {
     color: hsl(var(--muted-foreground));
     text-decoration: none;
-    font-size: 12px;
     transition: color 0.15s;
   }
-  .x-link:hover {
+  .social-links a:hover {
     color: hsl(var(--foreground));
+  }
+  .social-sep {
+    opacity: 0.4;
+    margin: 0 4px;
   }
 </style>
