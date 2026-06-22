@@ -30,10 +30,17 @@ export interface SnapshotRecord {
   details: string; // JSON
 }
 
+// 省份信息
+export interface ProvinceInfo {
+  province: string;
+  count: number;
+}
+
 // API 返回
 export interface StatusResponse {
   ok: boolean;
-  gansuCount: number;
+  province: string;
+  provinceCount: number;
   totalCount: number;
   machines: LocationRecord[];
   lastUpdated: string;
@@ -41,8 +48,23 @@ export interface StatusResponse {
     added: number;
     removed: number;
   };
+  recentChanges: {
+    added: { province: string; arcade_name: string }[];
+    removed: { province: string; arcade_name: string }[];
+  };
+}
+
+export interface ProvincesResponse {
+  provinces: ProvinceInfo[];
 }
 
 export interface HistoryResponse {
   snapshots: SnapshotRecord[];
+}
+
+export interface ChangesByDateResponse {
+  date: string;
+  added: LocationRecord[];
+  removed: LocationRecord[];
+  isInit: boolean;
 }

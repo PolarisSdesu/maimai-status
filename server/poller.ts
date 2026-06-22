@@ -25,8 +25,9 @@ async function pollOnce(): Promise<void> {
     const { added, removed } = updateLocations(data);
     recordSnapshot(data, added, removed);
 
+    const provinces = new Set(data.map((d) => d.province));
     console.log(
-      `[poller] OK | 全国 ${data.length} 台 | 甘肃 ${data.filter((d) => d.province === "甘肃").length} 台 | +${added} -${removed}`,
+      `[poller] OK | 全国 ${data.length} 台 | ${provinces.size} 个省份 | +${added} -${removed}`,
     );
   } catch (err) {
     console.error("[poller] 请求失败:", err instanceof Error ? err.message : err);
