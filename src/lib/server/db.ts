@@ -14,6 +14,8 @@ export function initDB(): DB {
   db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
+  db.pragma("cache_size = -64000"); // 64 MB cache
+  db.pragma("mmap_size = 268435456"); // 256 MB mmap
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS locations (
@@ -40,6 +42,13 @@ export function initDB(): DB {
     )
   `);
 
+  // ── 索引 ──
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_locations_province_active ON locations(province, is_active)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_locations_first_seen ON locations(first_seen_at)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_locations_last_seen ON locations(last_seen_at, is_active)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_locations_arcade_name ON locations(arcade_name)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_snapshots_fetched_at ON snapshots(fetched_at)`);
+
   return db;
 }
 
@@ -50,8 +59,8 @@ export function getDB(): DB {
 
 /** 检查是否尚未有任何数据（首次初始化） */
 export function isEmpty(): boolean {
-  const db = getDB();
-  const row = db.prepare("SELECT COUNT(*) as count FROM locations").get() as { count: number };
+  const d = getDB();
+  const row = d.prepare("SELECT COUNT(*) as count FROM locations").get() as { count: number };
   return row.count === 0;
 }
 
@@ -59,25 +68,31 @@ export function isEmpty(): boolean {
 export function updateLocations(
   data: Location[],
 ): { added: number; removed: number } {
-  const db = getDB();
+  const d = getDB();
   const now = new Date().toISOString();
 
-  const activeRows = db
+  const activeRows = d
     .prepare("SELECT id FROM locations WHERE is_active = 1")
     .all() as { id: string }[];
 
   const activeIds = new Set(activeRows.map((r) => r.id));
-  const incomingIds = new Set(data.map((d) => d.id));
+  const incomingIds = new Set(data.map((loc) => loc.id));
 
   const isInit = activeIds.size === 0;
   const toDeactivate = isInit ? [] : [...activeIds].filter((id) => !incomingIds.has(id));
-  const deactivateStmt = db.prepare(
-    "UPDATE locations SET is_active = 0, last_seen_at = ? WHERE id = ?",
-  );
-  for (const id of toDeactivate) deactivateStmt.run(now, id);
+
+  if (toDeactivate.length > 0) {
+    const deactivateStmt = d.prepare(
+      "UPDATE locations SET is_active = 0, last_seen_at = ? WHERE id = ?",
+    );
+    const deactivateAll = d.transaction((ids: string[]) => {
+      for (const id of ids) deactivateStmt.run(now, id);
+    });
+    deactivateAll(toDeactivate);
+  }
 
   let added = 0;
-  const upsertStmt = db.prepare(`
+  const upsertStmt = d.prepare(`
     INSERT INTO locations (id, province, arcade_name, address, place_id, first_seen_at, last_seen_at, is_active)
     VALUES (?, ?, ?, ?, ?, ?, ?, 1)
     ON CONFLICT(id) DO UPDATE SET
@@ -89,24 +104,28 @@ export function updateLocations(
       is_active      = 1
   `);
 
-  for (const loc of data) {
-    const existing = db
-      .prepare("SELECT first_seen_at FROM locations WHERE id = ?")
-      .get(loc.id) as { first_seen_at: string } | null;
+  const upsertAll = d.transaction((locs: Location[]) => {
+    for (const loc of locs) {
+      const existing = d
+        .prepare("SELECT first_seen_at FROM locations WHERE id = ?")
+        .get(loc.id) as { first_seen_at: string } | undefined;
 
-    const firstSeen = existing ? existing.first_seen_at : now;
-    if (!existing && !isInit) added++;
+      const firstSeen = existing ? existing.first_seen_at : now;
+      if (!existing && !isInit) added++;
 
-    upsertStmt.run(
-      loc.id,
-      loc.province,
-      loc.arcadeName,
-      loc.address,
-      loc.placeId,
-      firstSeen,
-      now,
-    );
-  }
+      upsertStmt.run(
+        loc.id,
+        loc.province,
+        loc.arcadeName,
+        loc.address,
+        loc.placeId,
+        firstSeen,
+        now,
+      );
+    }
+  });
+
+  upsertAll(data);
 
   return { added, removed: toDeactivate.length };
 }
@@ -117,11 +136,11 @@ export function recordSnapshot(
   addedCount: number,
   removedCount: number,
 ): void {
-  const db = getDB();
-  const gansuData = allData.filter((d) => d.province === "甘肃");
+  const d = getDB();
+  const gansuData = allData.filter((loc) => loc.province === "甘肃");
   const details = JSON.stringify(gansuData);
 
-  db.prepare(
+  d.prepare(
     `INSERT INTO snapshots (fetched_at, total_count, gansu_count, added_count, removed_count, details)
      VALUES (?, ?, ?, ?, ?, ?)`,
   ).run(
@@ -133,8 +152,8 @@ export function recordSnapshot(
 
 /** 所有有活跃机台的省份及其数量，按数量降序 */
 export function getAllProvinces(): ProvinceInfo[] {
-  const db = getDB();
-  return db
+  const d = getDB();
+  return d
     .prepare(
       "SELECT province, COUNT(*) as count FROM locations WHERE is_active = 1 GROUP BY province ORDER BY count DESC",
     )
@@ -143,20 +162,20 @@ export function getAllProvinces(): ProvinceInfo[] {
 
 /** 按省份获取活跃机台，"全国" 返回全部 */
 export function getActiveLocationsByProvince(province: string): LocationRecord[] {
-  const db = getDB();
+  const d = getDB();
   if (province === "全国") {
-    return db
+    return d
       .prepare("SELECT * FROM locations WHERE is_active = 1 ORDER BY province, arcade_name")
       .all() as LocationRecord[];
   }
-  return db
+  return d
     .prepare("SELECT * FROM locations WHERE is_active = 1 AND province = ? ORDER BY arcade_name")
     .all(province) as LocationRecord[];
 }
 
 /** 今天某省份的新增/移除数（从 locations 表推导） */
 export function getTodayChangesByProvince(province: string): { added: number; removed: number } {
-  const db = getDB();
+  const d = getDB();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayISO = today.toISOString();
@@ -164,13 +183,13 @@ export function getTodayChangesByProvince(province: string): { added: number; re
   const provinceFilter = province === "全国" ? "1=1" : "province = ?";
   const params = province === "全国" ? [] : [province];
 
-  const addedRow = db
+  const addedRow = d
     .prepare(
       `SELECT COUNT(*) as count FROM locations WHERE is_active = 1 AND first_seen_at >= ? AND ${provinceFilter}`,
     )
     .get(todayISO, ...params) as { count: number };
 
-  const removedRow = db
+  const removedRow = d
     .prepare(
       `SELECT COUNT(*) as count FROM locations WHERE is_active = 0 AND last_seen_at >= ? AND ${provinceFilter}`,
     )
@@ -185,10 +204,10 @@ export function getActiveLocations(): LocationRecord[] {
 
 /** 今天新增的机台（first_seen_at 在今天） */
 export function getTodayNewLocations(): LocationRecord[] {
-  const db = getDB();
+  const d = getDB();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return db
+  return d
     .prepare(
       "SELECT * FROM locations WHERE is_active = 1 AND first_seen_at >= ? ORDER BY first_seen_at DESC",
     )
@@ -197,10 +216,10 @@ export function getTodayNewLocations(): LocationRecord[] {
 
 /** 汇总今天所有快照的变更数 */
 export function getTodayChanges(): { added: number; removed: number } {
-  const db = getDB();
+  const d = getDB();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const rows = db
+  const rows = d
     .prepare(
       `SELECT COALESCE(SUM(added_count), 0) as added, COALESCE(SUM(removed_count), 0) as removed
        FROM snapshots WHERE fetched_at >= ?`,
@@ -214,20 +233,20 @@ export function getTodayChangedMachines(province: string): {
   added: { province: string; arcade_name: string }[];
   removed: { province: string; arcade_name: string }[];
 } {
-  const db = getDB();
+  const d = getDB();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayISO = today.toISOString();
   const provFilter = province === "全国" ? "1=1" : "province = ?";
   const params = province === "全国" ? [] : [province];
 
-  const added = db
+  const added = d
     .prepare(
       `SELECT province, arcade_name FROM locations WHERE is_active = 1 AND first_seen_at >= ? AND ${provFilter} ORDER BY first_seen_at DESC LIMIT 20`,
     )
     .all(todayISO, ...params) as { province: string; arcade_name: string }[];
 
-  const removed = db
+  const removed = d
     .prepare(
       `SELECT province, arcade_name FROM locations WHERE is_active = 0 AND last_seen_at >= ? AND ${provFilter} ORDER BY last_seen_at DESC LIMIT 20`,
     )
@@ -237,21 +256,23 @@ export function getTodayChangedMachines(province: string): {
 }
 
 export function getLatestSnapshot(): SnapshotRecord | null {
-  const db = getDB();
-  return db
+  const d = getDB();
+  return d
     .prepare("SELECT * FROM snapshots ORDER BY fetched_at DESC LIMIT 1")
-    .get() as SnapshotRecord | null;
+    .get() as SnapshotRecord | undefined ?? null;
 }
 
 export function getTotalLocationCount(): number {
-  const db = getDB();
-  const row = db.prepare("SELECT COUNT(*) as count FROM locations WHERE is_active = 1").get() as any;
+  const d = getDB();
+  const row = d.prepare("SELECT COUNT(*) as count FROM locations WHERE is_active = 1").get() as
+    | { count: number }
+    | undefined;
   return row?.count ?? 0;
 }
 
 export function getSnapshots(limit = 30): SnapshotRecord[] {
-  const db = getDB();
-  return db
+  const d = getDB();
+  return d
     .prepare("SELECT * FROM snapshots ORDER BY fetched_at DESC LIMIT ?")
     .all(limit) as SnapshotRecord[];
 }
@@ -262,7 +283,7 @@ export function getCalendarByProvince(
   month: number,
   province: string,
 ): { date: string; added: number; removed: number }[] {
-  const db = getDB();
+  const d = getDB();
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const endMonth = month === 12 ? 1 : month + 1;
   const endYear = month === 12 ? year + 1 : year;
@@ -270,8 +291,7 @@ export function getCalendarByProvince(
 
   const provFilter = province === "全国" ? "1=1" : "province = ?";
 
-  // UNION: additions by first_seen_at + removals by last_seen_at (inactive only)
-  const rows = db
+  const rows = d
     .prepare(
       `SELECT d, COALESCE(SUM(a), 0) as added, COALESCE(SUM(r), 0) as removed FROM (
          SELECT DATE(first_seen_at) as d, 1 as a, 0 as r
@@ -295,9 +315,9 @@ export function getCalendarByProvince(
 
 /** 搜索机台：按名称、地址、省份模糊匹配，全国范围 */
 export function searchLocations(query: string): LocationRecord[] {
-  const db = getDB();
+  const d = getDB();
   const pattern = `%${query}%`;
-  return db
+  return d
     .prepare(
       `SELECT * FROM locations WHERE is_active = 1 AND (arcade_name LIKE ? OR address LIKE ? OR province LIKE ?) ORDER BY province, arcade_name LIMIT 100`,
     )
@@ -313,22 +333,21 @@ export function getChangedMachinesByDate(
   removed: LocationRecord[];
   isInit: boolean;
 } {
-  const db = getDB();
+  const d = getDB();
   const provFilter = province === "全国" ? "1=1" : "province = ?";
 
-  // Check if this is the first day with data (init day)
-  const earliest = db
+  const earliest = d
     .prepare("SELECT DATE(MIN(first_seen_at)) as d FROM locations")
-    .get() as { d: string } | null;
+    .get() as { d: string } | undefined;
   const isInit = earliest?.d === dateStr;
 
-  const added = db
+  const added = d
     .prepare(
       `SELECT * FROM locations WHERE DATE(first_seen_at) = ? AND ${provFilter} ORDER BY arcade_name LIMIT 200`,
     )
     .all(dateStr, ...(province === "全国" ? [] : [province])) as LocationRecord[];
 
-  const removed = db
+  const removed = d
     .prepare(
       `SELECT * FROM locations WHERE is_active = 0 AND DATE(last_seen_at) = ? AND ${provFilter} ORDER BY arcade_name LIMIT 200`,
     )

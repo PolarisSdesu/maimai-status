@@ -1,3 +1,7 @@
+<svelte:head>
+  <title>全国舞萌机台数据库</title>
+</svelte:head>
+
 <script lang="ts">
   import { browser } from '$app/environment';
   import type { StatusData, ProvinceInfo, CalendarDay, Machine, ChangesByDateResponse } from '$lib/types';
@@ -12,33 +16,53 @@
   import LoadingSkeleton from '$lib/LoadingSkeleton.svelte';
   import Modal from '$lib/Modal.svelte';
   import SearchOverlay from '$lib/SearchOverlay.svelte';
+  import MachineDetail from '$lib/MachineDetail.svelte';
+  import DateChangesList from '$lib/DateChangesList.svelte';
 
   let { data } = $props();
 
-  // Snapshot initial prop values to avoid reactive capture of one-time SSR data
   const init = (() => $state.snapshot(data))();
 
-  let status = $state<'loading' | 'loaded' | 'error'>('loaded');
-  let statusData = $state<StatusData | null>(init);
+  // ── 核心数据：全量机台 + 客户端过滤 ──
+  let allMachines = $state<Machine[]>(init.allMachines);
+  let selectedProvince = $state(init.province);
+  let provinces = $state<ProvinceInfo[]>(init.provinces);
+
+  let displayMachines = $derived(
+    selectedProvince === '全国'
+      ? allMachines
+      : allMachines.filter((m) => m.province === selectedProvince),
+  );
+  let provinceCount = $derived(displayMachines.length);
+
+  // 今日变更
+  let todayChanges = $state<{ added: number; removed: number }>(init.todayChanges);
+  let recentChanges = $state<StatusData['recentChanges']>(init.recentChanges);
+
+  // ── UI 状态 ──
+  let status = $state<'loaded' | 'error'>('loaded');
   let errorMsg = $state('');
   let darkMode = $state(false);
   let themeMounted = $state(false);
 
-  // Province
-  let selectedProvince = $state(init.province);
-  let provinces = $state<ProvinceInfo[]>(init.provinces);
-
-  // Calendar
+  // 日历：始终显示全国数据
   let calYear = $state(init.calYear);
   let calMonth = $state(init.calMonth);
   let calDays = $state<CalendarDay[]>(init.calDays);
   let calLoading = $state(false);
+  // 省份高亮：Set<dateStr> 表示该日期选中省份有变更
+  let provinceHighlightDates = $state<Set<string>>(buildHighlightSet(init.provinceHighlightDates));
+
+  function buildHighlightSet(days: CalendarDay[]): Set<string> {
+    return new Set(days.filter((d) => d.added > 0 || d.removed > 0).map((d) => d.date));
+  }
 
   // Search overlay
   let searchOpen = $state(false);
 
-  // Modal
+  // Modal（支持骨架屏加载）
   let modalOpen = $state(false);
+  let modalLoading = $state(false);
   let modalTitle = $state('');
   let selectedMachine = $state<Machine | null>(null);
   let selectedDateChanges = $state<ChangesByDateResponse | null>(null);
@@ -56,12 +80,6 @@
     themeMounted = true;
   });
 
-  $effect(() => {
-    if (themeMounted) {
-      document.title = '全国舞萌机台数据库';
-    }
-  });
-
   function toggleTheme() {
     darkMode = !darkMode;
     applyTheme(darkMode);
@@ -73,38 +91,73 @@
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
   }
 
-  async function fetchProvinces() {
-    try {
-      const resp = await fetch('/api/provinces');
-      if (resp.ok) provinces = (await resp.json()).provinces;
-    } catch {
-      /* ignore */
-    }
+  // ── 客户端计算今日变更 ──
+  function computeTodayChanges(machines: Machine[]): { added: number; removed: number } {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+
+    const provMachines = selectedProvince === '全国'
+      ? machines
+      : machines.filter((m) => m.province === selectedProvince);
+
+    const added = provMachines.filter(
+      (m) => m.is_active === 1 && m.first_seen_at >= todayISO,
+    ).length;
+    const removed = provMachines.filter(
+      (m) => m.is_active === 0 && m.last_seen_at >= todayISO,
+    ).length;
+    return { added, removed };
   }
 
-  async function fetchStatus() {
+  // ── 省份切换：机台即时更新，仅后台刷新聚合数据 ──
+  async function refreshAggregates() {
     try {
       const resp = await fetch(
         `/api/status?province=${encodeURIComponent(selectedProvince)}`,
       );
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      statusData = (await resp.json()) as StatusData;
-      status = 'loaded';
+      if (resp.ok) {
+        const d = await resp.json();
+        todayChanges = d.todayChanges;
+        recentChanges = d.recentChanges;
+      }
     } catch (err) {
-      status = 'error';
-      errorMsg = err instanceof Error ? err.message : '网络请求失败';
+      console.warn('[refreshAggregates] 刷新聚合数据失败:', err);
     }
   }
 
-  async function fetchCalendar() {
-    calLoading = true;
+  /** 仅获取省份日历高亮数据，日历主体不变 */
+  async function fetchProvinceHighlights() {
+    if (selectedProvince === '全国') {
+      provinceHighlightDates = new Set();
+      return;
+    }
     try {
       const resp = await fetch(
         `/api/history-calendar?year=${calYear}&month=${calMonth}&province=${encodeURIComponent(selectedProvince)}`,
       );
-      if (resp.ok) calDays = (await resp.json()) as CalendarDay[];
-    } catch {
-      /* ignore */
+      if (resp.ok) {
+        const days: CalendarDay[] = await resp.json();
+        provinceHighlightDates = buildHighlightSet(days);
+      }
+    } catch (err) {
+      console.warn('[fetchProvinceHighlights] 获取省份日历高亮失败:', err);
+    }
+  }
+
+  /** 日历导航：刷新全国数据 + 省份高亮 */
+  async function fetchCalendar() {
+    calLoading = true;
+    try {
+      const [natResp] = await Promise.all([
+        fetch(
+          `/api/history-calendar?year=${calYear}&month=${calMonth}&province=${encodeURIComponent('全国')}`,
+        ),
+        fetchProvinceHighlights(),
+      ]);
+      if (natResp.ok) calDays = (await natResp.json()) as CalendarDay[];
+    } catch (err) {
+      console.warn('[fetchCalendar] 获取日历失败:', err);
     }
     calLoading = false;
   }
@@ -113,30 +166,25 @@
     const sel = e.target as HTMLSelectElement;
     selectedProvince = sel.value;
     sel.blur();
-    status = 'loading';
-    fetchStatus();
-    fetchCalendar();
+    // 即时: 今日变更近似值 + 省份高亮
+    todayChanges = computeTodayChanges(allMachines);
+    fetchProvinceHighlights();
+    // 后台: 精确聚合数据
+    refreshAggregates();
   }
 
+  // ── 日历导航 ──
   function prevMonth() {
-    if (calMonth === 1) {
-      calMonth = 12;
-      calYear--;
-    } else {
-      calMonth--;
-    }
+    if (calMonth === 1) { calMonth = 12; calYear--; }
+    else { calMonth--; }
     fetchCalendar();
   }
 
   function nextMonth() {
     const now = new Date();
     if (calYear === now.getFullYear() && calMonth >= now.getMonth() + 1) return;
-    if (calMonth === 12) {
-      calMonth = 1;
-      calYear++;
-    } else {
-      calMonth++;
-    }
+    if (calMonth === 12) { calMonth = 1; calYear++; }
+    else { calMonth++; }
     fetchCalendar();
   }
 
@@ -149,21 +197,29 @@
     selectedMachine = machine;
     selectedDateChanges = null;
     modalTitle = machine.arcade_name;
+    modalLoading = false;
     modalOpen = true;
   }
 
+  /** 点击日期 / 今日变更 → 先弹窗 + 骨架屏，再加载数据 */
   async function openDateChanges(dateStr: string) {
+    // 立即弹窗 + 骨架屏
+    modalTitle = `${dateStr} 变更`;
+    selectedMachine = null;
+    selectedDateChanges = null;
+    modalLoading = true;
+    modalOpen = true;
+
     try {
       const resp = await fetch(
         `/api/changes-by-date?date=${dateStr}&province=${encodeURIComponent(selectedProvince)}`,
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       selectedDateChanges = (await resp.json()) as ChangesByDateResponse;
-      selectedMachine = null;
-      modalTitle = `${dateStr} 变更`;
-      modalOpen = true;
-    } catch {
-      /* silently fail */
+      modalLoading = false;
+    } catch (err) {
+      console.warn('[openDateChanges] 获取日期变更失败:', err);
+      modalLoading = false;
     }
   }
 
@@ -171,13 +227,14 @@
     modalOpen = false;
     selectedMachine = null;
     selectedDateChanges = null;
+    modalLoading = false;
   }
 </script>
 
 <Header
   {selectedProvince}
   {provinces}
-  totalCount={statusData?.totalCount}
+  totalCount={allMachines.length}
   {darkMode}
   {onProvinceChange}
   onToggleTheme={toggleTheme}
@@ -186,21 +243,17 @@
 
 {#if !themeMounted}
   <div style="min-height:60vh"></div>
-{:else if status === 'loading'}
-  <StatusCard status="loading" data={null} errorMsg="" onRetry={fetchStatus} />
-  <LoadingSkeleton />
 {:else if status === 'error'}
-  <StatusCard {status} data={statusData} {errorMsg} onRetry={fetchStatus} />
+  <StatusCard status="error" data={null} {errorMsg} onRetry={() => {}} />
 {:else}
-  {@const d = statusData!}
-
-  <StatusCard {status} data={statusData} {errorMsg} onRetry={fetchStatus} />
+  {@const statusInfo = { ok: displayMachines.length > 0, province: selectedProvince, totalCount: allMachines.length, provinceCount }}
+  <StatusCard status="loaded" data={statusInfo as StatusData} {errorMsg} onRetry={() => {}} />
 
   <StatsGrid
-    provinceCount={d.provinceCount}
-    totalCount={d.totalCount}
-    added={d.todayChanges.added}
-    province={d.province}
+    {provinceCount}
+    totalCount={allMachines.length}
+    added={todayChanges.added}
+    province={selectedProvince}
   />
 
   <HistoryCalendar
@@ -209,21 +262,22 @@
     {calDays}
     {calLoading}
     canGoNext={canGoNext()}
+    highlightDates={selectedProvince !== '全国' ? provinceHighlightDates : undefined}
     onPrevMonth={prevMonth}
     onNextMonth={nextMonth}
     onDateClick={openDateChanges}
   />
 
   <MachineList
-    machines={d.machines}
-    province={d.province}
-    showProvince={d.province === '全国'}
+    machines={displayMachines}
+    province={selectedProvince}
+    showProvince={selectedProvince === '全国'}
     onMachineClick={openMachineDetail}
   />
 
   <TodayChanges
-    todayChanges={d.todayChanges}
-    recentChanges={d.recentChanges}
+    {todayChanges}
+    {recentChanges}
     onClick={() => {
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -232,105 +286,27 @@
   />
 
   <Footer
-    lastUpdated={d.lastUpdated}
-    formattedTime={formatTime(d.lastUpdated)}
-    relativeTimeStr={relativeTime(d.lastUpdated)}
+    lastUpdated={init.lastUpdated}
+    formattedTime={formatTime(init.lastUpdated)}
+    relativeTimeStr={relativeTime(init.lastUpdated)}
   />
 {/if}
 
 <Modal open={modalOpen} title={modalTitle} onclose={closeModal}>
-  {#if selectedMachine}
-    <div class="machine-detail">
-      <div class="detail-row">
-        <span class="detail-label">省份：</span><span class="detail-value"
-          >{selectedMachine.province}</span
-        >
-      </div>
-      <div class="detail-row detail-row-top">
-        <span class="detail-label">地址：</span><span
-          class="detail-value detail-value-addr">{selectedMachine.address}</span
-        >
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">状态：</span><span class="detail-value"
-          >{#if selectedMachine.is_active === 1}<span
-              class="detail-status-active">在线</span
-            >{:else}<span class="detail-status-offline">离线</span>{/if}</span
-        >
-      </div>
-      <div class="detail-divider"></div>
-      <div class="detail-row">
-        <span class="detail-label">首次发现：</span><span class="detail-value"
-          >{new Date(selectedMachine.first_seen_at).toLocaleString(
-            'zh-CN',
-          )}</span
-        >
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">最后更新：</span><span class="detail-value"
-          >{new Date(selectedMachine.last_seen_at).toLocaleString(
-            'zh-CN',
-          )}</span
-        >
-      </div>
+  {#if modalLoading}
+    <div class="modal-skeleton">
+      <div class="skel skel-line"></div>
+      <div class="skel skel-line"></div>
+      <div class="skel skel-line"></div>
     </div>
+  {:else if selectedMachine}
+    <MachineDetail machine={selectedMachine} />
   {:else if selectedDateChanges}
-    {#if selectedDateChanges.isInit}
-      <p class="empty-state">初始化 · 首次数据采集</p>
-    {:else}
-      {#if selectedDateChanges.added.length > 0}
-        <h3 class="detail-section-title">
-          新增 (+{selectedDateChanges.added.length})
-        </h3>
-        {#each selectedDateChanges.added as m (m.id)}
-          <div
-            class="component-item"
-            onclick={() => openMachineDetail(m)}
-            role="button"
-            tabindex="0"
-            onkeydown={(e: KeyboardEvent) => {
-              if (e.key === 'Enter') openMachineDetail(m);
-            }}
-          >
-            <div class="dot new"></div>
-            <div class="component-info">
-              <div class="component-name">{m.arcade_name}</div>
-              <div class="component-meta">
-                {selectedProvince === '全国'
-                  ? `${m.province} · ${m.address}`
-                  : m.address}
-              </div>
-            </div>
-          </div>
-        {/each}
-      {/if}
-      {#if selectedDateChanges.removed.length > 0}
-        <h3 class="detail-section-title">
-          移除 (-{selectedDateChanges.removed.length})
-        </h3>
-        {#each selectedDateChanges.removed as m (m.id)}
-          <div
-            class="component-item"
-            onclick={() => openMachineDetail(m)}
-            role="button"
-            tabindex="0"
-            onkeydown={(e: KeyboardEvent) => {
-              if (e.key === 'Enter') openMachineDetail(m);
-            }}
-          >
-            <div class="dot offline"></div>
-            <div class="component-info">
-              <div class="component-name">{m.arcade_name}</div>
-              <div class="component-meta">
-                {selectedProvince === '全国'
-                  ? `${m.province} · ${m.address}`
-                  : m.address}
-              </div>
-            </div>
-          </div>
-        {/each}
-      {/if}
-    {/if}
+    <DateChangesList
+      data={selectedDateChanges}
+      province={selectedProvince}
+      onMachineClick={openMachineDetail}
+    />
   {/if}
 </Modal>
 
@@ -338,4 +314,14 @@
   open={searchOpen}
   onclose={() => { searchOpen = false; }}
   onMachineClick={openMachineDetail}
+  {allMachines}
 />
+
+<style>
+  .modal-skeleton {
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+</style>

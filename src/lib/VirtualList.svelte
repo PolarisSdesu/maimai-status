@@ -27,15 +27,21 @@
   const visibleItems = $derived(items.slice(startIndex, endIndex));
   const offsetY = $derived(startIndex * itemHeight);
 
-  function resize() {
-    if (containerEl) containerHeight = containerEl.clientHeight;
-  }
-
   $effect(() => {
-    if (!containerEl) return;
-    resize();
-    const ro = new ResizeObserver(() => resize());
-    ro.observe(containerEl);
+    const el = containerEl;
+    if (!el) return;
+
+    const ro = new ResizeObserver((entries) => {
+      // 使用 entries[0] 直接获取，避免读取 clientHeight
+      const entry = entries[0];
+      if (entry) {
+        containerHeight = entry.contentRect.height;
+      }
+    });
+    ro.observe(el);
+    // 初始化高度
+    containerHeight = el.clientHeight;
+
     return () => ro.disconnect();
   });
 </script>

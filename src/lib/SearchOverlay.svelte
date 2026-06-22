@@ -1,28 +1,41 @@
 <script lang="ts">
   import type { Machine } from './types';
   import VirtualList from './VirtualList.svelte';
+  import ClickableListItem from './ClickableListItem.svelte';
 
   interface Props {
     open: boolean;
     onclose: () => void;
     onMachineClick: (machine: Machine) => void;
+    /** 全量机台数据，搜索完全在客户端进行 */
+    allMachines: Machine[];
   }
 
-  let { open, onclose, onMachineClick }: Props = $props();
+  let { open, onclose, onMachineClick, allMachines }: Props = $props();
 
   let query = $state('');
-  let results = $state<Machine[]>([]);
-  let loading = $state(false);
-  let searched = $state(false);
   let inputEl = $state<HTMLInputElement | null>(null);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let debouncedQuery = $state('');
+
+  // 客户端即时搜索：直接过滤全量数据
+  let results = $derived.by(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return [];
+    return allMachines.filter(
+      (m) =>
+        m.arcade_name.toLowerCase().includes(q) ||
+        m.address.toLowerCase().includes(q) ||
+        m.province.toLowerCase().includes(q),
+    );
+  });
+  let hasSearched = $derived(debouncedQuery.trim().length > 0);
 
   function handleGlobalKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       if (query) {
         query = '';
-        results = [];
-        searched = false;
+        debouncedQuery = '';
       } else {
         onclose();
       }
@@ -33,12 +46,8 @@
     if (open) {
       document.addEventListener('keydown', handleGlobalKeydown);
       document.body.style.overflow = 'hidden';
-      // Reset state
       query = '';
-      results = [];
-      loading = false;
-      searched = false;
-      // Autofocus after render
+      debouncedQuery = '';
       requestAnimationFrame(() => inputEl?.focus());
     }
     return () => {
@@ -55,37 +64,18 @@
     if (debounceTimer) clearTimeout(debounceTimer);
 
     if (!val.trim()) {
-      results = [];
-      searched = false;
-      loading = false;
+      debouncedQuery = '';
       return;
     }
 
-    loading = true;
-    debounceTimer = setTimeout(async () => {
-      try {
-        const resp = await fetch(
-          `/api/search?q=${encodeURIComponent(val.trim())}`,
-        );
-        if (resp.ok) {
-          const data = await resp.json();
-          results = data.results;
-        }
-      } catch {
-        results = [];
-      }
-      loading = false;
-      searched = true;
+    // 200ms 防抖，仅控制搜索触发频率
+    debounceTimer = setTimeout(() => {
+      debouncedQuery = val.trim();
     }, 200);
   }
 
-  /** Click result: open detail WITHOUT closing search */
   function handleResultClick(m: Machine) {
     onMachineClick(m);
-  }
-
-  function handlePanelKeydown(e: KeyboardEvent) {
-    // allow Escape to bubble to global handler
   }
 </script>
 
@@ -102,7 +92,6 @@
     aria-modal="true"
     aria-label="搜索全国机台"
     tabindex="-1"
-    onkeydown={handlePanelKeydown}
   >
     <!-- Search bar -->
     <div class="search-bar">
@@ -135,8 +124,7 @@
           class="search-clear"
           onclick={() => {
             query = '';
-            results = [];
-            searched = false;
+            debouncedQuery = '';
             inputEl?.focus();
           }}
           aria-label="清除"
@@ -173,43 +161,7 @@
 
     <!-- Results -->
     <div class="search-body">
-      {#if loading}
-        <div class="search-status">搜索中...</div>
-      {:else if searched && results.length === 0}
-        <div class="search-status">未找到匹配的机台</div>
-      {:else if results.length > 0}
-        <div class="search-result-count">
-          找到 <strong>{results.length}</strong> 个结果
-        </div>
-        <div class="search-results">
-          <VirtualList
-            items={results}
-            itemHeight={56}
-            key={(m: Machine) => m.id}
-            overscan={8}
-          >
-            {#snippet child(m: Machine, _idx: number)}
-              <div
-                class="component-item"
-                onclick={() => handleResultClick(m)}
-                role="button"
-                tabindex="0"
-                onkeydown={(e: KeyboardEvent) => {
-                  if (e.key === 'Enter') handleResultClick(m);
-                }}
-              >
-                <div class="dot online"></div>
-                <div class="component-info">
-                  <div class="component-name">{m.arcade_name}</div>
-                  <div class="component-meta">
-                    {m.province} · {m.address}
-                  </div>
-                </div>
-              </div>
-            {/snippet}
-          </VirtualList>
-        </div>
-      {:else}
+      {#if !hasSearched}
         <div class="search-hint">
           <svg
             width="48"
@@ -226,6 +178,35 @@
             <path d="m21 21-4.3-4.3" />
           </svg>
           <p>输入关键词搜索全国舞萌机台</p>
+        </div>
+      {:else if results.length === 0}
+        <div class="search-status">未找到匹配的机台</div>
+      {:else}
+        <div class="search-result-count">
+          找到 <strong>{results.length}</strong> 个结果
+        </div>
+        <div class="search-results">
+          <VirtualList
+            items={results}
+            itemHeight={56}
+            key={(m: Machine) => m.id}
+            overscan={8}
+          >
+            {#snippet child(m: Machine, _idx: number)}
+              <ClickableListItem
+                onclick={() => handleResultClick(m)}
+                ariaLabel={m.arcade_name}
+              >
+                <div class="dot online"></div>
+                <div class="component-info">
+                  <div class="component-name">{m.arcade_name}</div>
+                  <div class="component-meta">
+                    {m.province} · {m.address}
+                  </div>
+                </div>
+              </ClickableListItem>
+            {/snippet}
+          </VirtualList>
         </div>
       {/if}
     </div>
@@ -385,6 +366,33 @@
 
   .search-results {
     height: 50vh;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot.online {
+    background: hsl(var(--success));
+  }
+  .component-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .component-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+  }
+  .component-meta {
+    font-size: 12px;
+    color: hsl(var(--muted-foreground));
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   @keyframes panel-in {

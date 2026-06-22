@@ -8,6 +8,11 @@ export const GET = ({ url }: { url: URL }) => {
     return json({ results: [] });
   }
 
-  const results = searchLocations(q);
-  return json({ results });
+  try {
+    const results = searchLocations(q);
+    return json({ results });
+  } catch (err) {
+    console.error('[search] 搜索失败:', err instanceof Error ? err.message : err);
+    return json({ error: '搜索失败' }, { status: 500 });
+  }
 };

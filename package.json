@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
     "better-sqlite3": "^12.11.1",
     "svelte": "^5.5.5"
   },

@@ -6,9 +6,10 @@ import {
   getTodayChangesByProvince,
   getTodayChangedMachines,
 } from '$lib/server/db';
+import { DEFAULT_PROVINCE } from '$lib/constants';
 
 export const GET = ({ url }: { url: URL }) => {
-  const province = url.searchParams.get('province') || '甘肃';
+  const province = url.searchParams.get('province') || DEFAULT_PROVINCE;
   const machines = getActiveLocationsByProvince(province);
   const snapshot = getLatestSnapshot();
 

@@ -29,38 +29,6 @@
   </a>
   <div class="header-actions">
     <button
-      class="search-btn"
-      onclick={onSearchClick}
-      aria-label="搜索全国机台"
-      title="搜索全国机台"
-    >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
-    </button>
-    <select
-      class="province-select"
-      value={selectedProvince}
-      onchange={onProvinceChange}
-      aria-label="选择省份"
-    >
-      <option value="全国">全国 ({totalCount ?? "..."})</option>
-      {#each provinces as p}
-        <option value={p.province}>{p.province} ({p.count})</option>
-      {/each}
-    </select>
-    <button
       class="theme-toggle"
       onclick={onToggleTheme}
       aria-label={darkMode ? "切换到浅色模式" : "切换到深色模式"}
@@ -99,6 +67,38 @@
         <path
           d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"
         />
+      </svg>
+    </button>
+    <select
+      class="province-select"
+      value={selectedProvince}
+      onchange={onProvinceChange}
+      aria-label="选择省份"
+    >
+      <option value="全国">全国 ({totalCount ?? "..."})</option>
+      {#each provinces as p}
+        <option value={p.province}>{p.province} ({p.count})</option>
+      {/each}
+    </select>
+    <button
+      class="search-btn"
+      onclick={onSearchClick}
+      aria-label="搜索全国机台"
+      title="搜索全国机台"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
       </svg>
     </button>
   </div>

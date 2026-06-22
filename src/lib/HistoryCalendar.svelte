@@ -8,6 +8,7 @@
     calDays: CalendarDay[];
     calLoading: boolean;
     canGoNext: boolean;
+    highlightDates?: Set<string>;
     onPrevMonth: () => void;
     onNextMonth: () => void;
     onDateClick?: (dateStr: string) => void;
@@ -19,6 +20,7 @@
     calDays,
     calLoading,
     canGoNext,
+    highlightDates = new Set(),
     onPrevMonth,
     onNextMonth,
     onDateClick,
@@ -56,11 +58,13 @@
           {@const hasAdded = cell.added > 0 && cell.isCurrentMonth}
           {@const hasRemoved = cell.removed > 0 && cell.isCurrentMonth}
           {@const hasChanges = hasAdded || hasRemoved}
+          {@const provinceActive = highlightDates.has(cell.dateStr)}
           <div
             class="cal-cell"
             class:cal-cell-other={!cell.isCurrentMonth}
             class:cal-cell-clickable={hasChanges}
-            title={hasChanges ? `${cell.dateStr}\n新增 ${cell.added} 台\n移除 ${cell.removed} 台` : ''}
+            class:cal-cell-province-active={provinceActive}
+            title={hasChanges ? `${cell.dateStr}\n新增 ${cell.added} 台\n移除 ${cell.removed} 台` : provinceActive ? `${cell.dateStr}\n当前省份有变更` : ''}
             onclick={() => { if (hasChanges) onDateClick?.(cell.dateStr); }}
             role="button"
             tabindex={hasChanges ? 0 : -1}
@@ -69,6 +73,9 @@
             <div class="cal-day" class:cal-day-today={cell.isToday} class:cal-day-added={hasAdded && !hasRemoved} class:cal-day-removed={hasRemoved && !hasAdded} class:cal-day-has-changes={hasAdded && hasRemoved}>
               <span class="cal-day-num" class:cal-day-num-other={!cell.isCurrentMonth}>{cell.day}</span>
             </div>
+            {#if provinceActive}
+              <span class="cal-province-dot" aria-hidden="true"></span>
+            {/if}
           </div>
         {/each}
       </div>
@@ -190,6 +197,24 @@
 
   .cal-cell-clickable {
     cursor: pointer;
+  }
+
+  /* 省份高亮：日期下方小圆点 */
+  .cal-cell-province-active {
+    position: relative;
+  }
+  .cal-province-dot {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    translate: -50% 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+  }
+  :global(.dark) .cal-province-dot {
+    background: hsl(220 70% 70%);
   }
 
   @media (max-width: 480px) {
