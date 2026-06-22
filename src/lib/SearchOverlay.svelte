@@ -311,9 +311,15 @@
     transition: background 0.15s, color 0.15s;
   }
 
-  .search-clear:hover {
+  .search-clear:active {
     background: hsl(var(--accent));
     color: hsl(var(--foreground));
+  }
+  @media (any-hover: hover) {
+    .search-clear:hover {
+      background: hsl(var(--accent));
+      color: hsl(var(--foreground));
+    }
   }
 
   .search-close-btn {
@@ -331,9 +337,15 @@
     transition: background 0.15s, color 0.15s;
   }
 
-  .search-close-btn:hover {
+  .search-close-btn:active {
     background: hsl(var(--accent));
     color: hsl(var(--foreground));
+  }
+  @media (any-hover: hover) {
+    .search-close-btn:hover {
+      background: hsl(var(--accent));
+      color: hsl(var(--foreground));
+    }
   }
 
   .search-body {

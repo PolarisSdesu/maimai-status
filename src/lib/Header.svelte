@@ -119,8 +119,13 @@
     color: inherit;
     transition: opacity 0.15s;
   }
-  .logo-link:hover {
+  .logo-link:active {
     opacity: 0.8;
+  }
+  @media (any-hover: hover) {
+    .logo-link:hover {
+      opacity: 0.8;
+    }
   }
   .logo-icon {
     display: flex;
@@ -159,8 +164,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .province-select:hover {
+  .province-select:active {
     background-color: hsl(var(--accent));
+  }
+  @media (any-hover: hover) {
+    .province-select:hover {
+      background-color: hsl(var(--accent));
+    }
   }
   .province-select:focus-visible {
     border-color: hsl(var(--ring));
@@ -184,9 +194,15 @@
       color 0.15s,
       border-color 0.15s;
   }
-  .search-btn:hover {
+  .search-btn:active {
     background: hsl(var(--accent));
     color: hsl(var(--accent-foreground));
+  }
+  @media (any-hover: hover) {
+    .search-btn:hover {
+      background: hsl(var(--accent));
+      color: hsl(var(--accent-foreground));
+    }
   }
 
   .theme-toggle {
@@ -205,9 +221,15 @@
       background 0.15s,
       color 0.15s;
   }
-  .theme-toggle:hover {
+  .theme-toggle:active {
     background: hsl(var(--accent));
     color: hsl(var(--accent-foreground));
+  }
+  @media (any-hover: hover) {
+    .theme-toggle:hover {
+      background: hsl(var(--accent));
+      color: hsl(var(--accent-foreground));
+    }
   }
 
   .icon-sun {

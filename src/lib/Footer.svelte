@@ -63,8 +63,13 @@
     text-decoration: none;
     transition: color 0.15s;
   }
-  .social-links a:hover {
+  .social-links a:active {
     color: hsl(var(--foreground));
+  }
+  @media (any-hover: hover) {
+    .social-links a:hover {
+      color: hsl(var(--foreground));
+    }
   }
   .social-sep {
     opacity: 0.4;

@@ -116,5 +116,8 @@
     cursor: pointer; color: hsl(var(--foreground)); font-size: 14px;
     font-weight: 500; font-family: inherit; transition: background 0.15s, border-color 0.15s;
   }
-  .btn-retry:hover { background: hsl(var(--accent)); }
+  .btn-retry:active { background: hsl(var(--accent)); }
+  @media (any-hover: hover) {
+    .btn-retry:hover { background: hsl(var(--accent)); }
+  }
 </style>

@@ -62,7 +62,7 @@
             class:cal-cell-clickable={hasChanges}
             title={hasChanges ? `${cell.dateStr}\n新增 ${cell.added} 台\n移除 ${cell.removed} 台` : ''}
             onclick={() => { if (hasChanges) onDateClick?.(cell.dateStr); }}
-            role={hasChanges ? 'button' : undefined}
+            role="button"
             tabindex={hasChanges ? 0 : -1}
             onkeydown={(e: KeyboardEvent) => { if (hasChanges && e.key === 'Enter') onDateClick?.(cell.dateStr); }}
           >
@@ -90,9 +90,15 @@
     cursor: pointer;
     transition: color 0.15s, background 0.15s;
   }
-  .cal-nav-btn:hover:not(:disabled) {
+  .cal-nav-btn:active:not(:disabled) {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+  @media (any-hover: hover) {
+    .cal-nav-btn:hover:not(:disabled) {
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+    }
   }
   .cal-nav-btn:disabled {
     opacity: 0.5;
@@ -138,7 +144,10 @@
     border-radius: var(--radius);
     transition: background 0.15s;
   }
-  .cal-cell:hover { background: hsl(var(--accent)); }
+  .cal-cell:active { background: hsl(var(--accent)); }
+  @media (any-hover: hover) {
+    .cal-cell:hover { background: hsl(var(--accent)); }
+  }
 
   .cal-day {
     width: 30px;

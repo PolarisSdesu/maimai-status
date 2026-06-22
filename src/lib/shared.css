@@ -74,7 +74,10 @@
   cursor: pointer;
 }
 .component-item:last-of-type { border-bottom: none; }
-.component-item:hover { background: hsl(var(--muted) / 0.5); }
+.component-item:active { background: hsl(var(--muted) / 0.5); }
+@media (any-hover: hover) {
+  .component-item:hover { background: hsl(var(--muted) / 0.5); }
+}
 
 .component-item .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .component-item .dot.online  { background: hsl(var(--success)); }

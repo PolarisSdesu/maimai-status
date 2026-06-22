@@ -100,9 +100,15 @@
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
   }
-  .modal-close:hover {
+  .modal-close:active {
     background: hsl(var(--accent));
     color: hsl(var(--foreground));
+  }
+  @media (any-hover: hover) {
+    .modal-close:hover {
+      background: hsl(var(--accent));
+      color: hsl(var(--foreground));
+    }
   }
 
   .modal-body {
@@ -119,7 +125,7 @@
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Snippet-rendered content (global — rendered by App.svelte) */
+  /* Snippet-rendered content (global — rendered by +page.svelte) */
   :global {
     .machine-detail {
       display: flex;
@@ -187,9 +193,16 @@
     border-bottom: 1px solid hsl(var(--border) / 0.5);
     cursor: pointer;
   }
-  .modal-body :global(.component-item):hover {
+  .modal-body :global(.component-item):active {
     background: hsl(var(--accent));
     margin: 0 -20px;
     padding: 10px 20px;
+  }
+  @media (any-hover: hover) {
+    .modal-body :global(.component-item):hover {
+      background: hsl(var(--accent));
+      margin: 0 -20px;
+      padding: 10px 20px;
+    }
   }
 </style>

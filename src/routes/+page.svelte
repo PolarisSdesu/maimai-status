@@ -16,7 +16,7 @@
   let { data } = $props();
 
   // Snapshot initial prop values to avoid reactive capture of one-time SSR data
-  const init = $state.snapshot(data);
+  const init = (() => $state.snapshot(data))();
 
   let status = $state<'loading' | 'loaded' | 'error'>('loaded');
   let statusData = $state<StatusData | null>(init);
