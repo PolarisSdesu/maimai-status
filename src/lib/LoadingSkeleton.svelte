@@ -4,7 +4,7 @@
 <!-- StatusCard 骨架 -->
 <div
   class="status-card status-card-loading"
-  style="height:82px;display:flex;align-items:center"
+  style="height:82px"
 >
   <div class="status-card-body">
     <div class="status-heading">
