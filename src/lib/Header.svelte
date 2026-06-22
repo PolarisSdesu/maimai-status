@@ -172,9 +172,8 @@
       background-color: hsl(var(--accent));
     }
   }
-  .province-select:focus-visible {
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.3);
+  .province-select:focus {
+    outline: none;
   }
 
   .search-btn {
