@@ -245,8 +245,9 @@
   <div class="skeleton-layer">
     <LoadingSkeleton />
   </div>
-  <div class="content-layer">
-    {#if status === 'error'}
+  {#if browser}
+    <div class="content-layer">
+      {#if status === 'error'}
       <StatusCard status="error" data={null} {errorMsg} onRetry={() => {}} />
     {:else}
       {@const statusInfo = { ok: displayMachines.length > 0, province: selectedProvince, totalCount: allMachines.length, provinceCount }}
@@ -295,6 +296,7 @@
       />
     {/if}
   </div>
+  {/if}
 </div>
 
 <Modal open={modalOpen} title={modalTitle} onclose={closeModal}>
