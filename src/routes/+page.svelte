@@ -241,56 +241,61 @@
   onSearchClick={() => { searchOpen = true; }}
 />
 
-{#if !themeMounted}
-  <div style="min-height:60vh"></div>
-{:else if status === 'error'}
-  <StatusCard status="error" data={null} {errorMsg} onRetry={() => {}} />
-{:else}
-  {@const statusInfo = { ok: displayMachines.length > 0, province: selectedProvince, totalCount: allMachines.length, provinceCount }}
-  <StatusCard status="loaded" data={statusInfo as StatusData} {errorMsg} onRetry={() => {}} />
+<div class="page-body" class:mounted={themeMounted}>
+  <div class="skeleton-layer">
+    <LoadingSkeleton />
+  </div>
+  <div class="content-layer">
+    {#if status === 'error'}
+      <StatusCard status="error" data={null} {errorMsg} onRetry={() => {}} />
+    {:else}
+      {@const statusInfo = { ok: displayMachines.length > 0, province: selectedProvince, totalCount: allMachines.length, provinceCount }}
+      <StatusCard status="loaded" data={statusInfo as StatusData} {errorMsg} onRetry={() => {}} />
 
-  <StatsGrid
-    {provinceCount}
-    totalCount={allMachines.length}
-    added={todayChanges.added}
-    province={selectedProvince}
-  />
+      <StatsGrid
+        {provinceCount}
+        totalCount={allMachines.length}
+        added={todayChanges.added}
+        province={selectedProvince}
+      />
 
-  <HistoryCalendar
-    {calYear}
-    {calMonth}
-    {calDays}
-    {calLoading}
-    canGoNext={canGoNext()}
-    highlightDates={selectedProvince !== '全国' ? provinceHighlightDates : undefined}
-    onPrevMonth={prevMonth}
-    onNextMonth={nextMonth}
-    onDateClick={openDateChanges}
-  />
+      <HistoryCalendar
+        {calYear}
+        {calMonth}
+        {calDays}
+        {calLoading}
+        canGoNext={canGoNext()}
+        highlightDates={selectedProvince !== '全国' ? provinceHighlightDates : undefined}
+        onPrevMonth={prevMonth}
+        onNextMonth={nextMonth}
+        onDateClick={openDateChanges}
+      />
 
-  <MachineList
-    machines={displayMachines}
-    province={selectedProvince}
-    showProvince={selectedProvince === '全国'}
-    onMachineClick={openMachineDetail}
-  />
+      <MachineList
+        machines={displayMachines}
+        province={selectedProvince}
+        showProvince={selectedProvince === '全国'}
+        onMachineClick={openMachineDetail}
+      />
 
-  <TodayChanges
-    {todayChanges}
-    {recentChanges}
-    onClick={() => {
-      const today = new Date();
-      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      openDateChanges(dateStr);
-    }}
-  />
+      <TodayChanges
+        {todayChanges}
+        {recentChanges}
+        onClick={() => {
+          const today = new Date();
+          const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          openDateChanges(dateStr);
+        }}
+      />
 
-  <Footer
-    lastUpdated={init.lastUpdated}
-    formattedTime={formatTime(init.lastUpdated)}
-    relativeTimeStr={relativeTime(init.lastUpdated)}
-  />
-{/if}
+      <Footer
+        lastUpdated={init.lastUpdated}
+        formattedTime={formatTime(init.lastUpdated)}
+        relativeTimeStr={relativeTime(init.lastUpdated)}
+      />
+    {/if}
+  </div>
+</div>
 
 <Modal open={modalOpen} title={modalTitle} onclose={closeModal}>
   {#if modalLoading}
@@ -318,6 +323,35 @@
 />
 
 <style>
+  /* ── 骨架屏 → 内容交叉淡入淡出 ── */
+  .page-body {
+    display: grid;
+    grid-template-areas: "main";
+  }
+  .page-body > * {
+    grid-area: main;
+  }
+
+  .skeleton-layer {
+    z-index: 1;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .content-layer {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .page-body.mounted .skeleton-layer {
+    opacity: 0;
+  }
+
+  .page-body.mounted .content-layer {
+    opacity: 1;
+  }
+
   .modal-skeleton {
     padding: 8px 0;
     display: flex;
